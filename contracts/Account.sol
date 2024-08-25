@@ -6,6 +6,7 @@ import "@matterlabs/zksync-contracts/l2/system-contracts/interfaces/IAccount.sol
 import "@matterlabs/zksync-contracts/l2/system-contracts/libraries/TransactionHelper.sol";
 import "@matterlabs/zksync-contracts/l2/system-contracts/libraries/SystemContractsCaller.sol";
 import "@matterlabs/zksync-contracts/l2/system-contracts/Constants.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 error Account__NotEnoughBalance();
 
@@ -53,9 +54,33 @@ contract Account is IAccount, IERC1271{
         bytes32 _txHash,
         bytes32 _suggestedSignedHash,
         Transaction calldata _transaction
-    ) external payable{}
+    ) external payable{
+        _executeTransaction(_transaction);
+    }
 
-    function executeTransactionFromOutside(Transaction calldata _transaction) external payable {}
+    function _executeTransaction(Transaction calldata _transaction) internal {
+        address to = address(uint160(_transaction.to));
+        uint128 value = Utils.safeCastToU128(_transaction.value);
+        bytes memory data = _transaction.data;
+        if(value > 0) {
+            // check limit
+        }
+
+        if(to == address(DEPLOYER_SYSTEM_CONTRACT)) {
+            SystemContractsCaller.systemCallWithPropagatedRevert(Utils.safeCastToU32(gasleft()), to, value, data);
+        } else {
+            bool success;
+            assembly {
+                success := call(gas(), to, value, add(data, 0x20), mload(data), 0, 0);
+            }
+            require(success);
+        }
+    } 
+
+    function executeTransactionFromOutside(Transaction calldata _transaction) external payable {
+        _validateTransaction(bytes32(0), _transaction);
+        _executeTransaction(_transaction);
+    }
 
     function payForTransaction(
         bytes32 _txHash,
