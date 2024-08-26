@@ -7,13 +7,14 @@ import "@matterlabs/zksync-contracts/l2/system-contracts/libraries/TransactionHe
 import "@matterlabs/zksync-contracts/l2/system-contracts/libraries/SystemContractsCaller.sol";
 import "@matterlabs/zksync-contracts/l2/system-contracts/Constants.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "./SpendLimit.sol";
 
 error Account__NotEnoughBalance();
 error Account__FailedToPayTheOperator();
 error Account__OnlyBootLoaderCanCall();
 
 
-contract Account is IAccount, IERC1271{
+contract Account is IAccount, IERC1271, SpendLimit{
 
     address public owner;
     bytes4 constant EIP1271_SUCCESS_RETURN_VALUE = 0x1626ba7e;
@@ -80,6 +81,7 @@ contract Account is IAccount, IERC1271{
         // call spendlimit contract to ensure that ETH `value` doesn't exceed the daily spending limit
         if(value > 0) {
             // check limit
+            _checkSpendingLimit(address(ETH_TOKEN_SYSTEM_CONTRACT), value);
         }
 
         // If receiver is SYSTEM CONTRACT, then we will make system call using SystemContractsCaller
