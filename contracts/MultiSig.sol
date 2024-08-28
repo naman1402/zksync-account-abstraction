@@ -94,7 +94,7 @@ contract MultiSig is IAccount, IERC1271{
     }
 
     // To execute from outside, first we need to validate and then execute
-    function executeTransactionFromOutside(Transaction calldata _transaction) external payable {
+    function executeTransactionFromOutside(Transaction calldata _transaction) external payable override {
         _validateTransaction(bytes32(0), _transaction);
         _executeTransaction(_transaction);
     }
@@ -117,7 +117,7 @@ contract MultiSig is IAccount, IERC1271{
         bytes32 /*_txHash*/,
         bytes32 /*_possibleSignedHash*/,
         Transaction calldata _transaction
-    ) external payable {
+    ) external payable override onlyBootLoader {
         TransactionHelper.processPaymasterInput(_transaction);
     }
 

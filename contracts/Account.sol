@@ -53,7 +53,7 @@ contract Account is IAccount, IERC1271, SpendLimit{
         // this account contract must have enough balance to complete the transaction
 
         uint256 totalRequiredBalance = TransactionHelper.totalRequiredBalance(_transaction);
-        if(totalRequiredBalance <= address(this).balance) {
+        if(totalRequiredBalance > address(this).balance) {
             revert Account__NotEnoughBalance();
         }
 
@@ -68,7 +68,7 @@ contract Account is IAccount, IERC1271, SpendLimit{
         bytes32 /*_txHash*/,
         bytes32 /*_suggestedSignedHash*/,
         Transaction calldata _transaction
-    ) external payable onlyBootLoader {
+    ) external payable override onlyBootLoader {
         _executeTransaction(_transaction);
     }
 
@@ -97,7 +97,7 @@ contract Account is IAccount, IERC1271, SpendLimit{
         }
     } 
 
-    function executeTransactionFromOutside(Transaction calldata _transaction) external payable {
+    function executeTransactionFromOutside(Transaction calldata _transaction) external payable override {
         _validateTransaction(bytes32(0), _transaction);
         _executeTransaction(_transaction);
     }
@@ -106,7 +106,7 @@ contract Account is IAccount, IERC1271, SpendLimit{
         bytes32 /*_txHash*/,
         bytes32 /*_suggestedSignedHash*/,
         Transaction calldata _transaction
-    ) external payable {
+    ) external payable override {
         bool success = TransactionHelper.payToTheBootloader(_transaction);
         if (!success) {
             revert Account__FailedToPayTheOperator();
@@ -117,7 +117,7 @@ contract Account is IAccount, IERC1271, SpendLimit{
         bytes32 /*_txHash*/,
         bytes32 /*_possibleSignedHash*/,
         Transaction calldata _transaction
-    ) external payable {
+    ) external payable override onlyBootLoader {
         TransactionHelper.processPaymasterInput(_transaction);
     }
 
