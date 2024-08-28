@@ -121,7 +121,12 @@ contract MultiSig is IAccount, IERC1271{
         TransactionHelper.processPaymasterInput(_transaction);
     }
 
-    // Overrider from EIP1271, 
+    /// @param hash hash received from the account, used to verify account
+    /// @param signature which is further extracted into multiple signature and used to verified address
+    /// @notice this function is originally from EIP1271
+    /// extractSignature spilts the 130-byte signature into two signatures
+    /// Using ECDSA.recover() method to recover the public address from signature and message hash, this function reconstructs the public key
+    /// if the recovered public keys are not the owners of this contract, then magicValue is bytes4(0)
     function isValidSignature(bytes32 hash, bytes memory signature) public view override returns (bytes4 magicValue) {
         magicValue = EIP1271_SUCCESS_RETURN_VALUE;
         if(signature.length != 130) {
@@ -139,18 +144,20 @@ contract MultiSig is IAccount, IERC1271{
         address recoveredAddr1 = ECDSA.recover(hash, signature1);
         address recoveredAddr2 = ECDSA.recover(hash, signature2);
         if(recoveredAddr1 != owner1 || recoveredAddr2 != owner2) {
-            magicValue = bytes4( 0);
+            magicValue = bytes4(0);
         }
     }
 
+    /// @param _signature checks the length and further divides it into v,r,s 
+    /// @notice this function validate the structure of an ECDSA signature by checking length, v (value), r, s(range) and returns true if condition is met
     function checkValidECDSASignture(bytes memory _signature) internal pure returns (bool) {
         if(_signature.length != 65) {
             return false;
         }
 
-        uint8 v;
-        bytes32 r;
-        bytes32 s;
+        uint8 v; // recovery ID in the signature
+        bytes32 r; // part of ECDSA signature
+        bytes32 s; // another part of ECDSA signature
 
         assembly {
             r := mload(add(_signature, 0x20))
@@ -158,6 +165,7 @@ contract MultiSig is IAccount, IERC1271{
             v := and(mload(add(_signature, 0x41)), 0xff)
         }
 
+        // In ethereum, v is the recovery ID and values 27 or 28 indicates whether the public key recovery process should consider different possible solutiosn
         if(v != 27 && v != 28) {
             return false;
         }
@@ -169,12 +177,17 @@ contract MultiSig is IAccount, IERC1271{
         return true;
     }
 
+    /// @notice this is one of the most important funciton in a multisig wallet contract
+    /// @param _fullSignature should be of 130 bytes exactly, this is crucial info before spliting it into two 65-byte
     function extractSignature(bytes memory _fullSignature) internal pure returns (bytes memory signature1, bytes memory signature2) {
         require(_fullSignature.length == 130);
         signature1 = new bytes(65);
         signature2 = new bytes(65);
 
 
+        // r is the first 32 bytes (0x20) of signature, s is the second 32 bytes of the signature (0x40 is 64 bytes)
+        // v add 0x41 (64 byte) to get 65th byte
+        // using mstore is used to store value into variable
         assembly {
             let r := mload(add(_fullSignature, 0x20))
             let s := mload(add(_fullSignature, 0x40))
@@ -185,6 +198,7 @@ contract MultiSig is IAccount, IERC1271{
             mstore8(add(signature1, 0x60), v)
         }
 
+        // Similarly retreiving second signature from the _fullSignature
         assembly {
             let r := mload(add(_fullSignature, 0x61))
             let s := mload(add(_fullSignature, 0x81))
