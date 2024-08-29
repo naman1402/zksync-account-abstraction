@@ -67,7 +67,7 @@ describe("Deployment, setup and transfer", function () {
         await txReceipt.wait()
 
         expect(await provider.getBalance(account.address)).to.be.closeTo(
-            balances.AccountBalanceEth.sub(toBN("5")),
+            balances.AccountBalanceEth.sub(toBigNumber("5")),
             toBigNumber("0.01"),
         )
         expect(await provider.getBalance(user.address)).to.eq(balances.UserBalanceEth.add(toBigNumber("5")))
@@ -80,4 +80,24 @@ describe("Deployment, setup and transfer", function () {
         expect(limit.isEnabled).to.eq(true)
 
     })
+
+    it.only("Transfer ETH 2: Should revert due to spending limit", async function() {
+        const balances = await getBalances(provider, wallet, account, user)
+        const tx = Tx(user, "6")
+        const txReceipt = await sendTransaction(provider, account, user, tx)
+        await expect(txReceipt.wait()).to.be.rejectedWith("Exceeds daily limit")
+
+        expect(await provider.getBalance(account.address)).to.be.closeTo(balances.AccountBalanceEth, toBigNumber("0.01"))
+        expect(await provider.getBalance(user.address)).to.eq(balances.UserBalanceEth)
+
+        const limit = await account.limits(ETH_ADDRESS)
+
+        expect(limit.limit).to.eq(toBigNumber("10"))
+        expect(limit.available).to.eq(toBigNumber("5"))
+        expect(limit.resetTime.toNumber()).to.gt(Math.floor(Date.now() / 1000))
+        expect(limit.isEnabled).to.eq(true)
+        // await getBalances(provider, wallet, account, user)
+    })
+
+
 })
