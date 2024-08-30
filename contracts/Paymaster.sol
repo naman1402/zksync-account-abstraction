@@ -34,8 +34,8 @@ contract Paymaster is IPaymaster{
     ) external payable onlyBootloader() returns (bytes4 magic, bytes memory context) {
 
         magic = PAYMASTER_VALIDATION_SUCCESS_MAGIC;
+        
         /// input length validation
-        /// first 4 bytes of paymasterInput to determine the type of parameter flow 
         if(_transaction.paymasterInput.length < 4) {
             revert Paymaster__InvalidLengthOfInput();
         }
